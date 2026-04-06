@@ -56,12 +56,5 @@ The project needs to link to the game's internal libraries (like `UnityEngine.dl
 4.  Save the file and build your solution.
 
 ---
-
-## 📦 Technical Dependencies
-This plugin utilizes specific Unity modules for its functionality:
-* **UnityEngine.IMGUIModule**: Used for rendering the Minimap interface.
-* **UnityEngine.CoreModule**: Core Unity functionality.
-* **CommandBuffers**: Used for the high-performance silhouette pipeline.
-
 ## 📄 License
 This project is released under the **MIT License**.
