@@ -14,67 +14,69 @@ namespace UltrakillMinimap
         void Awake()
         {
             Log = Logger;
-            Log.LogInfo("[Minimap] === Awake iniciado ===");
+            Log.LogInfo("[Minimap] === Awake initialized ===");
 
             var go = new GameObject("MinimapObject");
             go.hideFlags = HideFlags.HideAndDontSave;
             DontDestroyOnLoad(go);
             go.AddComponent<MinimapBehaviour>();
 
-            Log.LogInfo("[Minimap] === Pronto! [M] = mapa | [L] = highlight inimigos ===");
+            Log.LogInfo("[Minimap] === Ready! [M] = map | [L] = highlight enemies ===");
         }
     }
 
     // ====================================================================
-    // MinimapBehaviour — mapa + silhouette outline via RenderTexture
+    // MinimapBehaviour - Class responsible for minimap logic and 
+    // enemy outline (silhouette) generation using RenderTexture
     // ====================================================================
     public class MinimapBehaviour : MonoBehaviour
     {
-        // --- Mapa ---
+        // --- Minimap Configuration ---
         private const float MAP_SIZE            = 220f;
         private const float MAP_MARGIN          = 16f;
         private const float DOT_RADIUS          = 5f;
         private const float PLAYER_RADIUS       = 5f;
         private const float MAP_RANGE           = 80f;
 
-        // --- Outline ---
+        // --- Outline Configuration ---
         private static readonly Color OUTLINE_COLOR = new Color(1f, 0.3f, 0.05f, 1f);
-        // Numero de pixels de dilatacao do outline (quanto maior, mais grosso)
+        // Number of pixels for outline dilation (higher values result in thicker outlines)
         private const int DILATE_PIXELS = 3;
 
-        // --- Scan ---
+        // --- Scan Intervals ---
         private const float ENEMY_SCAN_INTERVAL  = 0.5f;
         private const float PLAYER_SCAN_INTERVAL = 2.0f;
 
-        // --- Estado ---
+        // --- Internal State ---
         private bool _showMap       = false;
         private bool _showHighlight = false;
         private Rect _panelRect;
 
-        // GUI
+        // --- GUI Elements ---
         private Texture2D _bgTex, _dotRedTex, _dotCyanTex;
         private GUIStyle  _titleStyle;
 
-        // Cache
+        // --- Entity Cache ---
         private List<EnemyIdentifier> _cachedEnemies = new List<EnemyIdentifier>();
         private GameObject            _cachedPlayer  = null;
         private float                 _enemyTimer    = 0f;
         private float                 _playerTimer   = 0f;
 
-        // Outline — CommandBuffer na camera principal
+        // --- Outline - CommandBuffer attached to main camera ---
         private CommandBuffer _cmdBuf;
         private Camera        _attachedCamera;
 
-        // Material que pinta tudo a branco (para a silhueta)
-        // Material que dilata + coloriza (blur horizontal/vertical)
+        // Materials used in the rendering pipeline:
+        // _silhouetteMat: Renders the enemy mesh in pure white
+        // _dilateMat / _compositeMat: Apply dilation and colorization
         private Material _silhouetteMat;
         private Material _dilateMat;
         private Material _compositeMat;
 
-        // RenderTextures para o pipeline de outline
-        private RenderTexture _silRT;   // silhueta a branco
-        private RenderTexture _dilateH; // dilatacao horizontal
-        private RenderTexture _dilateV; // dilatacao vertical (final)
+        // RenderTextures for the outline pipeline
+        private RenderTexture _silRT;   // Base white silhouette
+        private RenderTexture _dilateH; // Buffer for horizontal dilation
+        private RenderTexture _dilateV; // Buffer for vertical dilation (final result)
 
         private int _lastW, _lastH;
 
@@ -98,27 +100,27 @@ namespace UltrakillMinimap
         }
 
         // ================================================================
-        // MATERIAIS
+        // MATERIAL INITIALIZATION
         // ================================================================
         void BuildMaterials()
         {
             var colored = Shader.Find("Hidden/Internal-Colored");
 
-            // Pinta tudo a branco puro — usado para desenhar a silhueta dos inimigos
+            // Material to paint enemy geometry pure white (base silhouette generation)
             _silhouetteMat = new Material(colored);
             _silhouetteMat.hideFlags = HideFlags.HideAndDontSave;
             _silhouetteMat.SetColor("_Color", Color.white);
-            _silhouetteMat.SetInt("_ZTest",  (int)CompareFunction.Always); // ve atraves de paredes
+            _silhouetteMat.SetInt("_ZTest",  (int)CompareFunction.Always); // Ignores depth (allows seeing through walls)
             _silhouetteMat.SetInt("_ZWrite", 0);
             _silhouetteMat.SetInt("_Cull",   (int)CullMode.Off);
             _silhouetteMat.SetInt("_SrcBlend", (int)BlendMode.One);
             _silhouetteMat.SetInt("_DstBlend", (int)BlendMode.Zero);
 
-            // Dilata a silhueta (blur box simples) e aplica a cor do outline
-            // Usa o shader de blit do Unity (Hidden/BlitCopy nao faz nada util,
-            // mas Hidden/Internal-Colored com uma textura como _MainTex funciona)
+            // Materials to apply dilation (box blur) and outline color
+            // Uses Unity's standard blit shader for image processing
+            // (Fallback to Internal-Colored in case the primary shader is not found)
             var blitShader = Shader.Find("Hidden/Internal-GUITextureClip");
-            if (blitShader == null) blitShader = colored; // fallback
+            if (blitShader == null) blitShader = colored; 
 
             _dilateMat = new Material(blitShader);
             _dilateMat.hideFlags = HideFlags.HideAndDontSave;
@@ -135,7 +137,7 @@ namespace UltrakillMinimap
             if (Input.GetKeyDown(KeyCode.M))
             {
                 _showMap = !_showMap;
-                Plugin.Log.LogInfo($"[Minimap] mapa {(_showMap ? "aberto" : "fechado")}");
+                Plugin.Log.LogInfo($"[Minimap] map {(_showMap ? "opened" : "closed")}");
             }
 
             if (Input.GetKeyDown(KeyCode.L))
@@ -159,17 +161,17 @@ namespace UltrakillMinimap
         }
 
         // ================================================================
-        // COMMAND BUFFER — pipeline de outline
+        // COMMAND BUFFER - Outline rendering pipeline
         //
-        // Evento: AfterForwardOpaque (roda depois da geometria, antes do post)
+        // Attached to the main camera before image effects are applied (BeforeImageEffects)
         //
-        // Passo 1: limpa _silRT a preto
-        // Passo 2: para cada inimigo, desenha todos os seus meshes com
-        //          _silhouetteMat (ZTest Always) => silhueta branca no _silRT
-        // Passo 3: dilata _silRT N pixels horizontalmente => _dilateH
-        // Passo 4: dilata _dilateH N pixels verticalmente => _dilateV
-        // Passo 5: compoe _dilateV por cima do framebuffer com a cor do outline
-        //          usando alpha = valor do pixel dilatado (branco = outline visivel)
+        // Step 1: Clear the RenderTexture (_silRT) by filling it with black color
+        // Step 2: Iterate over cached enemies and render their meshes 
+        //         using the silhouette material onto the RenderTexture (_silRT)
+        // Step 3: Horizontal dilation of _silRT (generates _dilateH)
+        // Step 4: Vertical dilation of _dilateH (generates _dilateV)
+        // Step 5: Composition of the outline over the main framebuffer,
+        //         using the defined color and alpha based on dilation
         // ================================================================
         void AttachCommandBuffer()
         {
@@ -220,16 +222,16 @@ namespace UltrakillMinimap
             EnsureRTs();
             _cmdBuf.Clear();
 
-            // --- Passo 1: limpa silRT a preto ---
+            // --- Step 1: Clear RenderTexture ---
             _cmdBuf.SetRenderTarget(_silRT);
             _cmdBuf.ClearRenderTarget(false, true, Color.clear);
 
-            // --- Passo 2: desenha silhueta de cada inimigo ---
+            // --- Step 2: Draw enemy silhouettes ---
             foreach (var enemy in _cachedEnemies)
             {
                 if (enemy == null) continue;
 
-                // SkinnedMeshRenderer (inimigos animados — a maioria no ULTRAKILL)
+                // Processing SkinnedMeshRenderers (animated enemies)
                 foreach (var smr in enemy.GetComponentsInChildren<SkinnedMeshRenderer>())
                 {
                     if (smr == null || smr.sharedMesh == null) continue;
@@ -237,7 +239,7 @@ namespace UltrakillMinimap
                         _cmdBuf.DrawRenderer(smr, _silhouetteMat, sub);
                 }
 
-                // MeshRenderer (inimigos estaticos)
+                // Processing MeshRenderers (static enemies/no skeletal animation)
                 foreach (var mr in enemy.GetComponentsInChildren<MeshRenderer>())
                 {
                     if (mr == null) continue;
@@ -248,34 +250,29 @@ namespace UltrakillMinimap
                 }
             }
 
-            // --- Passos 3+4+5: dilata e compoe via OnRenderObject ---
-            // (feito em OnRenderObject porque o Blit com shaders custom
-            //  no CommandBuffer requer shader properties que nao temos)
+            // Steps 3, 4, and 5 (Dilation and Composition) are performed in the OnRenderObject method
+            // This is because execution via CommandBuffer with custom shaders 
+            // requires specific properties that might not be directly accessible here.
         }
 
-        // Dilata e compoe em OnRenderObject (corre depois de BeforeImageEffects)
+        // Dilation and composition executed after the camera's BeforeImageEffects event
         void OnRenderObject()
         {
             if (!_showHighlight || _silRT == null) return;
             if (Camera.current != _attachedCamera)   return;
 
-            // Dilata a silhueta com um box blur em CPU... na verdade vamos usar
-            // Graphics.Blit com um material simples que apenas copia a textura
-            // e depois desenhamos o outline colorido em GL
+            // Uses Unity's GL API calls to draw the silhouette over the screen
+            // The final result displays the outline where enemies are located,
+            // applying the coloration via the material's tint property
 
-            // Abordagem final mais simples e que FUNCIONA em qualquer Unity:
-            // Desenha a silRT como quad full-screen colorido com GL
-            // O resultado e: outline branco onde os inimigos estao, ZTest Always
-            // Aplicamos a cor do outline como tint
-
-            if (Event.current != null) return; // so em render, nao em GUI
+            if (Event.current != null) return; // Ensures execution only during the rendering cycle (ignores GUI events)
 
             GL.PushMatrix();
             GL.LoadOrtho();
 
             _silhouetteMat.SetPass(0);
 
-            // Tint da cor do outline sobre a silhueta
+            // Application of the outline color over the silhouette texture
             var colorMat = _compositeMat;
             colorMat.mainTexture = _silRT;
             colorMat.SetPass(0);
@@ -292,7 +289,7 @@ namespace UltrakillMinimap
         }
 
         // ================================================================
-        // MAPA
+        // MAP
         // ================================================================
         void OnGUI()
         {
@@ -306,7 +303,7 @@ namespace UltrakillMinimap
             }
 
             GUI.DrawTexture(_panelRect, _bgTex, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(_panelRect.x, _panelRect.y + 4f, MAP_SIZE, 18f), "MAPA  [M]", _titleStyle);
+            GUI.Label(new Rect(_panelRect.x, _panelRect.y + 4f, MAP_SIZE, 18f), "MAP  [M]", _titleStyle);
 
             if (_cachedPlayer == null) return;
 
@@ -336,7 +333,7 @@ namespace UltrakillMinimap
         }
 
         // ================================================================
-        // UTILITARIOS
+        // UTILITIES
         // ================================================================
         void RefreshEnemyCache()
         {
