@@ -1,65 +1,152 @@
 # ULTRAKILL Minimap & Enemy Tracker
 
-[cite_start]A high-performance BepInEx plugin for **ULTRAKILL** that adds a real-time minimap system[cite: 1]. [cite_start]This tool is designed to help you track enemies through walls and navigate levels more effectively[cite: 1].
+A high-performance **BepInEx** plugin for **ULTRAKILL** that adds a **real-time minimap** and **enemy tracker**.
+This tool helps you **see enemies through walls** and navigate levels more efficiently.
 
 ---
 
 ## 📋 Prerequisites
 
-If you have **never modded a game before**, you must complete these steps first:
+Before using this plugin, ensure you have:
 
-1.  [cite_start]**BepInEx 5.4.x (x64)**: This is the mod loader required to run the plugin[cite: 1].
-    * Download the **x64** version of BepInEx 5.4.
-    * Extract all files from the BepInEx `.zip` directly into your main ULTRAKILL folder (where `ULTRAKILL.exe` is located).
-2.  **.NET Desktop Runtime 6.0**: 
-    * Required for the plugin to run on your system. You can download it from the [official Microsoft website](https://dotnet.microsoft.com/download/dotnet/6.0).
+1. **BepInEx 5.4.x (x64)** – the mod loader required to run the plugin:
+
+   * Download the **x64** version of BepInEx 5.4.
+   * Extract all files **directly** into your main ULTRAKILL folder (where `ULTRAKILL.exe` is located).
+2. **.NET Desktop Runtime 6.0** – required to run the plugin:
+
+   * Download it from the [official Microsoft website](https://dotnet.microsoft.com/download/dotnet/6.0).
+
+> ⚠ If you've never modded a game before, follow these steps carefully.
 
 ---
 
 ## 🚀 Installation
 
-### For Steam Users (Easiest)
-1.  Go to the **Releases** section of this GitHub repository.
-2.  Download the latest `UltrakillTrainerMap.dll`.
-3.  Navigate to your game folder: `SteamLibrary\steamapps\common\ULTRAKILL\BepInEx\plugins`.
-4.  Drop the `.dll` file into the `plugins` folder.
+### Steam Users (Easiest)
 
-### For Non-Steam / Custom Installations
-If you are using a different version of the game, the pre-compiled `.dll` might not find the correct paths. You will need to compile it yourself:
-1.  [cite_start]Open the `UltrakillTrainer.csproj` file in a text editor (like Notepad)[cite: 2].
-2.  [cite_start]Locate the line: `<UltrakillPath>C:\Program Files (x86)\Steam\steamapps\common\ULTRAKILL</UltrakillPath>`[cite: 2].
-3.  [cite_start]Change that path to your actual game folder (e.g., `D:\Games\ULTRAKILL`)[cite: 2].
-4.  Build the project using Visual Studio or the `.NET SDK`.
+1. Go to the **Releases** section of this GitHub repository.
+2. Download the latest `UltrakillTrainerMap.dll`.
+3. Navigate to your game folder:
+   `SteamLibrary\steamapps\common\ULTRAKILL\BepInEx\plugins`
+4. Place the `.dll` file inside the `plugins` folder.
+5. Launch ULTRAKILL and press **M** to toggle the minimap.
+
+---
+
+### Non-Steam / Custom Installations
+
+If your game is installed in a **different folder**, you need to **compile the plugin** yourself:
+
+#### Step 1 – Edit the Project Path
+
+1. Open the `UltrakillTrainer.csproj` file in a text editor (like **Notepad** or **VS Code**).
+2. Find the line:
+
+   ```xml
+   <UltrakillPath>C:\Program Files (x86)\Steam\steamapps\common\ULTRAKILL</UltrakillPath>
+   ```
+3. Change it to the folder where your game is installed. Example:
+
+   ```xml
+   <UltrakillPath>D:\Games\ULTRAKILL</UltrakillPath>
+   ```
+4. Save the file.
+
+#### Step 2 – Build the DLL
+
+**Option 1 – Using Visual Studio:**
+
+1. Open the `UltrakillTrainer.csproj` project in Visual Studio.
+2. Click **Build → Build Solution**.
+3. After building, locate your DLL in:
+
+   ```
+   UltrakillTrainer\bin\Release\net6.0\UltrakillTrainerMap.dll
+   ```
+4. Copy the DLL into your `BepInEx\plugins` folder.
+
+**Option 2 – Using .NET SDK (Command Line):**
+
+1. Open a terminal or Command Prompt.
+2. Navigate to the project folder containing `UltrakillTrainer.csproj`.
+3. Run:
+
+   ```bash
+   dotnet build UltrakillTrainer.csproj -c Release
+   ```
+4. Copy the resulting DLL as shown above into `BepInEx\plugins`.
 
 ---
 
 ## 🎮 Controls & Commands
 
-Once you are in a level, use these hotkeys to control the plugin:
+Once in a level:
 
-| Key | Action |
-| :--- | :--- |
-| **[M]** | [cite_start]**Toggle Minimap**: Shows/hides the circular radar in the top corner[cite: 1]. |
+| Key   | Action                                           |
+| :---- | :----------------------------------------------- |
+| **M** | Toggle the **Minimap** on/off in the top corner. |
+
+> The minimap updates every **0.5 seconds**, showing enemy positions in real time.
 
 ---
 
-## 🛠 Troubleshooting (Common Errors)
+## 🛠 Troubleshooting
 
-| Problem | Cause | Solution |
-| :--- | :--- | :--- |
-| **No console or map appears** | BepInEx is not installed correctly. | Ensure the `BepInEx` folder and `winhttp.dll` are in the same folder as `ULTRAKILL.exe`. |
-| **"Missing References" during build** | Incorrect game path in `.csproj`. | [cite_start]Open `UltrakillTrainer.csproj` and update the `<UltrakillPath>` to your local folder[cite: 2]. |
-| **The map is empty** | Plugin is working but can't find enemies. | [cite_start]The map updates every 0.5 seconds; ensure you are in a level with active enemies[cite: 1]. |
-| **Game crashes on startup** | Incompatible version or missing .NET. | Ensure you have installed **.NET Desktop Runtime 6.0**. |
+| Problem                               | Cause                                        | Solution                                                                                 |
+| :------------------------------------ | :------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| **No console or map appears**         | BepInEx not installed correctly              | Ensure the `BepInEx` folder and `winhttp.dll` are in the same folder as `ULTRAKILL.exe`. |
+| **"Missing References" during build** | Incorrect `<UltrakillPath>` in `.csproj`     | Open `UltrakillTrainer.csproj` and update the path to your ULTRAKILL folder.             |
+| **Map is empty**                      | No enemies in level or plugin not detecting  | Ensure you are in a level with active enemies; map updates every 0.5s.                   |
+| **Game crashes on startup**           | Missing .NET runtime or incompatible version | Install **.NET Desktop Runtime 6.0**. Check ULTRAKILL is updated.                        |
+
+---
+
+## 📝 Step-by-Step Visual Guide
+
+For users who want a **quick visual workflow**:
+
+1. **Install BepInEx**
+   Extract BepInEx into your ULTRAKILL folder:
+
+   ```
+   ULTRAKILL.exe
+   ├─ BepInEx
+   ├─ winhttp.dll
+   ```
+
+2. **Download the Plugin**
+
+   * From GitHub Releases: `UltrakillTrainerMap.dll`
+
+3. **Put DLL in Plugins Folder**
+
+   ```
+   BepInEx\plugins\UltrakillTrainerMap.dll
+   ```
+
+4. **Custom Installation** (if not Steam)
+
+   * Edit `UltrakillTrainer.csproj` → `<UltrakillPath>`
+   * Build DLL → Copy to `plugins` folder
+
+5. **Launch Game**
+
+   * Press **M** to toggle minimap.
 
 ---
 
 ## 📦 Technical Dependencies
-[cite_start]The plugin links to several Unity and game modules[cite: 2]:
-* [cite_start]**UnityEngine.IMGUIModule**: Renders the Map UI[cite: 2].
-* [cite_start]**UnityEngine.CoreModule**: Core game engine functions[cite: 2].
-* [cite_start]**Assembly-CSharp**: Primary ULTRAKILL logic[cite: 2].
-* [cite_start]**CommandBuffers**: Optimized rendering for the enemy outlines[cite: 1].
+
+The plugin depends on:
+
+* **UnityEngine.IMGUIModule** – renders the minimap UI
+* **UnityEngine.CoreModule** – core game engine functions
+* **Assembly-CSharp** – main ULTRAKILL logic
+* **CommandBuffers** – optimized rendering for enemy outlines
+
+---
 
 ## 📄 License
+
 This project is released under the **MIT License**.
