@@ -140,17 +140,6 @@ Once in a level:
 
 ---
 
-## 📦 Technical Dependencies
-
-The plugin depends on:
-
-* **UnityEngine.IMGUIModule** – renders the minimap UI
-* **UnityEngine.CoreModule** – core game engine functions
-* **Assembly-CSharp** – main ULTRAKILL logic
-* **CommandBuffers** – optimized rendering for enemy outlines
-
----
-
 ## 📄 License
 
-This p
+This project is released under the MIT License.
