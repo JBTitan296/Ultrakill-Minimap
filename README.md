@@ -29,7 +29,7 @@ Before using this plugin, ensure you have:
 
 ### Steam Users (Easiest)
 
-1. Go to the **[Releases](https://github.com/YourUsername/UltrakillMinimap/releases)** section of this GitHub repository.
+1. Go to the **[Releases](https://github.com/JBTitan296/Ultrakill-Minimap/releases)** section of this GitHub repository.
 2. Download the latest `UltrakillTrainerMap.dll`.
 3. Navigate to your game folder:
    `SteamLibrary\steamapps\common\ULTRAKILL\BepInEx\plugins`
