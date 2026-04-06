@@ -1,6 +1,6 @@
 # ULTRAKILL Minimap & Enemy Tracker
 
-A high-performance **BepInEx** plugin for **ULTRAKILL** that adds a **real-time minimap** and **enemy tracker**.
+A **BepInEx** plugin for **ULTRAKILL** that adds a **real-time minimap** and **enemy tracker**.
 This tool helps you **see enemies through walls** and navigate levels more efficiently.
 
 ---
