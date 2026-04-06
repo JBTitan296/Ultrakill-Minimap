@@ -1,6 +1,6 @@
 # ULTRAKILL Minimap & Enemy Tracker
 
-A specialized BepInEx plugin for **ULTRAKILL** that provides a real-time minimap and an enemy highlighting system to help you track targets during intense combat.
+A specialized BepInEx plugin for **ULTRAKILL** that provides a real-time minimap system to help you track targets during intense combat.
 
 ---
 
@@ -38,7 +38,6 @@ If you have **never modded a game before**, you must install these core componen
 Once you are inside a level, use these keys to control the features:
 
 * **[M]**: Toggle the **Minimap** (A circular UI showing enemy positions).
-* **[L]**: Toggle **Enemy Highlights** (Displays silhouettes through walls).
 
 ---
 
